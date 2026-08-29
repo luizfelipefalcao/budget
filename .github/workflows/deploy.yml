@@ -26,7 +26,16 @@ jobs:
           node-version: 22
           cache: yarn
       - run: yarn install --frozen-lockfile
-      - run: yarn build
+      - name: Build
+        env:
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: |
+          if [ -z "$APP_PASSWORD" ]; then
+            echo "Add an APP_PASSWORD repository secret before deploying."
+            exit 1
+          fi
+          export VITE_AUTH_HASH="$(node -e "process.stdout.write(require('crypto').createHash('sha256').update(process.env.APP_PASSWORD).digest('hex'))")"
+          yarn build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
