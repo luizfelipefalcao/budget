@@ -1,0 +1,275 @@
+.home {
+  min-height: 100svh;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.brand {
+  margin: 0;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.month-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tab-bar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.tab-bar {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  border-bottom: 1px solid #c5c5c5;
+  overflow-x: auto;
+}
+
+.tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: #f3f3f3;
+  color: #333;
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-bottom: -1px;
+  border-radius: 4px 4px 0 0;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: #eaeaea;
+}
+
+.tab.active {
+  background: #fff;
+  border-color: #c5c5c5;
+  border-bottom-color: #fff;
+  font-weight: 600;
+}
+
+.add-month {
+  appearance: none;
+  flex-shrink: 0;
+  border: 1px solid #c5c5c5;
+  background: #fff;
+  color: #333;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.add-month:hover {
+  background: #f3f3f3;
+}
+
+.tab-panel {
+  border: 1px solid #c5c5c5;
+  border-top: none;
+  padding: 24px 16px 28px;
+  background: #fff;
+}
+
+.month-heading {
+  margin: 0 0 20px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.budget-table-block {
+  margin-bottom: 28px;
+}
+
+.budget-table-block h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  min-width: 1280px;
+}
+
+.budget-table.compact {
+  min-width: 480px;
+  max-width: 720px;
+}
+
+.budget-table th,
+.budget-table td {
+  border: 1px solid #d0d0d0;
+  padding: 8px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.budget-table thead th {
+  background: #f0f0f0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.budget-table tbody th {
+  text-align: left;
+  font-weight: 500;
+  background: #fafafa;
+}
+
+.budget-table .row-label-col {
+  min-width: 96px;
+}
+
+.budget-table .total-col {
+  font-weight: 600;
+  background: #f7f7f7;
+}
+
+.budget-table thead .total-col {
+  background: #e8e8e8;
+}
+
+.budget-table .difference-row td,
+.budget-table .difference-row th {
+  background: #fbfbfb;
+}
+
+.amount-input {
+  width: 6.5rem;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: right;
+  background: #fff;
+  appearance: textfield;
+}
+
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.amount-input:focus {
+  outline: 2px solid #c45c26;
+  outline-offset: 1px;
+}
+
+.budget-table td.is-over,
+.budget-table td.is-over .amount-input {
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+.budget-table td.is-under,
+.budget-table td.is-under .amount-input {
+  background: #e7f6ec;
+  color: #146c2e;
+}
+
+.budget-table td.is-even,
+.budget-table td.is-even .amount-input {
+  background: #f3f3f3;
+  color: #333;
+}
+
+.budget-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.summary-chip {
+  min-width: 200px;
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fafafa;
+}
+
+.summary-chip.overspent {
+  background: #fff4e8;
+  border-color: #f0c49a;
+}
+
+.summary-chip.savings {
+  background: #fdeef4;
+  border-color: #efc2d3;
+}
+
+.summary-chip.is-over {
+  background: #fde8e8;
+  border-color: #f0b4b4;
+}
+
+.summary-chip.is-under {
+  background: #e7f6ec;
+  border-color: #b4dcc0;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.summary-hint {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
