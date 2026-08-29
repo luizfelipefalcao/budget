@@ -97,10 +97,25 @@
   background: #fff;
 }
 
+.panel-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
 .month-heading {
-  margin: 0 0 20px;
+  margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.panel-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .budget-table-block {
@@ -275,6 +290,7 @@
 .budget-summary {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -333,8 +349,8 @@
   margin: -12px 0 28px;
 }
 
-.edit-actions.summary-actions {
-  margin: 0 0 16px;
+.edit-actions.footer-actions {
+  margin: 8px 0 0;
 }
 
 .edit-btn,

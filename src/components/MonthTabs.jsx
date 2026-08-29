@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import BudgetTable from './BudgetTable'
-import { buildExpenseItems, buildIncomeItems } from '../data/plannedBudget'
+import {
+  buildExpenseItems,
+  buildIncomeItems,
+  buildSavingsItems,
+  LEFTOVER_SAVINGS_ID,
+} from '../data/plannedBudget'
 import {
   formatCurrency,
+  leftoverBudget,
   monthHeading,
   parseAmount,
+  resolveActual,
   resolveEstimate,
   tabLabel,
 } from '../lib/money'
@@ -18,19 +25,25 @@ export default function MonthTabs() {
     useBudgetStore((state) => state.expenseTableTitle) || 'Monthly Budget'
   const savedLabels = useBudgetStore((state) => state.expenseLabels) ?? {}
   const savedIncomeLabels = useBudgetStore((state) => state.incomeLabels) ?? {}
+  const savedSavingsLabels = useBudgetStore((state) => state.savingsLabels) ?? {}
   const customCategoryIds =
     useBudgetStore((state) => state.customCategoryIds) ?? []
   const customIncomeIds = useBudgetStore((state) => state.customIncomeIds) ?? []
+  const customSavingsIds =
+    useBudgetStore((state) => state.customSavingsIds) ?? []
   const removedCategoryIds =
     useBudgetStore((state) => state.removedCategoryIds) ?? []
   const setActiveMonth = useBudgetStore((state) => state.setActiveMonth)
   const setExpenseActual = useBudgetStore((state) => state.setExpenseActual)
   const setIncomeActual = useBudgetStore((state) => state.setIncomeActual)
+  const setSavingsActual = useBudgetStore((state) => state.setSavingsActual)
   const saveExpenseEdits = useBudgetStore((state) => state.saveExpenseEdits)
   const addExpenseItem = useBudgetStore((state) => state.addExpenseItem)
   const removeExpenseItem = useBudgetStore((state) => state.removeExpenseItem)
   const addIncomeItem = useBudgetStore((state) => state.addIncomeItem)
   const removeIncomeItem = useBudgetStore((state) => state.removeIncomeItem)
+  const addSavingsItem = useBudgetStore((state) => state.addSavingsItem)
+  const removeSavingsItem = useBudgetStore((state) => state.removeSavingsItem)
   const addMonth = useBudgetStore((state) => state.addMonth)
 
   const [isEditing, setIsEditing] = useState(false)
@@ -38,21 +51,25 @@ export default function MonthTabs() {
   const [draftEstimates, setDraftEstimates] = useState({})
   const [draftLabels, setDraftLabels] = useState({})
   const [draftIncomeLabels, setDraftIncomeLabels] = useState({})
+  const [draftSavingsLabels, setDraftSavingsLabels] = useState({})
 
   const monthActuals = actuals[activeMonth] ?? {}
   const expenseActuals = monthActuals.expenses ?? {}
   const incomeActuals = monthActuals.income ?? {}
+  const savingsActuals = monthActuals.savings ?? {}
   const savedEstimates = monthActuals.expenseEstimates ?? {}
   const expenseEstimates = isEditing ? draftEstimates : savedEstimates
   const tableTitle = isEditing ? draftTitle : expenseTableTitle
   const labelSource = isEditing ? draftLabels : savedLabels
   const incomeLabelSource = isEditing ? draftIncomeLabels : savedIncomeLabels
+  const savingsLabelSource = isEditing ? draftSavingsLabels : savedSavingsLabels
   const labeledCategories = buildExpenseItems(
     customCategoryIds,
     labelSource,
     removedCategoryIds,
   )
   const incomeItems = buildIncomeItems(customIncomeIds, incomeLabelSource)
+  const savingsItems = buildSavingsItems(customSavingsIds, savingsLabelSource)
 
   const estimatedExpenseTotal = labeledCategories.reduce(
     (sum, item) =>
@@ -67,8 +84,14 @@ export default function MonthTabs() {
     (sum, item) => sum + parseAmount(incomeActuals[item.id]),
     0,
   )
+  const leftover = leftoverBudget(actualIncomeTotal, actualExpenseTotal)
+  const suggestedSavings = { [LEFTOVER_SAVINGS_ID]: leftover }
   const overspent = actualExpenseTotal - estimatedExpenseTotal
-  const savings = actualIncomeTotal - actualExpenseTotal
+  const savings = savingsItems.reduce(
+    (sum, item) =>
+      sum + resolveActual(savingsActuals[item.id], suggestedSavings[item.id]),
+    0,
+  )
 
   function startEdit() {
     setDraftTitle(expenseTableTitle)
@@ -90,6 +113,14 @@ export default function MonthTabs() {
         ]),
       ),
     )
+    setDraftSavingsLabels(
+      Object.fromEntries(
+        buildSavingsItems(customSavingsIds, savedSavingsLabels).map((item) => [
+          item.id,
+          item.label,
+        ]),
+      ),
+    )
     setIsEditing(true)
   }
 
@@ -100,6 +131,7 @@ export default function MonthTabs() {
       draftEstimates,
       draftLabels,
       draftIncomeLabels,
+      draftSavingsLabels,
     )
     setIsEditing(false)
   }
@@ -127,6 +159,16 @@ export default function MonthTabs() {
     })
   }
 
+  function handleRemoveSavingsColumn(sourceId) {
+    if (sourceId === LEFTOVER_SAVINGS_ID) return
+    removeSavingsItem(sourceId)
+    setDraftSavingsLabels((current) => {
+      const next = { ...current }
+      delete next[sourceId]
+      return next
+    })
+  }
+
   function handleAddItem() {
     const id = addExpenseItem()
     if (isEditing) {
@@ -147,6 +189,16 @@ export default function MonthTabs() {
       setDraftIncomeLabels((current) => ({
         ...current,
         [id]: 'New income',
+      }))
+    }
+  }
+
+  function handleAddSavingsItem() {
+    const id = addSavingsItem()
+    if (isEditing) {
+      setDraftSavingsLabels((current) => ({
+        ...current,
+        [id]: 'New saving',
       }))
     }
   }
@@ -182,7 +234,31 @@ export default function MonthTabs() {
       </div>
 
       <div className="tab-panel" role="tabpanel">
-        <h1 className="month-heading">{monthHeading(activeMonth)}</h1>
+        <div className="panel-header">
+          <h1 className="month-heading">{monthHeading(activeMonth)}</h1>
+          <div className="panel-summary">
+            <div className="budget-summary">
+              <div
+                className={`summary-chip overspent ${overspent > 0 ? 'is-over' : overspent < 0 ? 'is-under' : ''}`}
+              >
+                <span className="summary-label">Overspent</span>
+                <span className="summary-value">
+                  {formatCurrency(overspent)}
+                </span>
+                <span className="summary-hint">
+                  Actual expenses − estimate
+                </span>
+              </div>
+              <div
+                className={`summary-chip savings ${savings < 0 ? 'is-over' : savings > 0 ? 'is-under' : ''}`}
+              >
+                <span className="summary-label">Savings</span>
+                <span className="summary-value">{formatCurrency(savings)}</span>
+                <span className="summary-hint">Saving table total</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <BudgetTable
           title={tableTitle}
@@ -245,7 +321,37 @@ export default function MonthTabs() {
           </button>
         </div>
 
-        <div className="edit-actions summary-actions">
+        <BudgetTable
+          title="Saving"
+          items={savingsItems}
+          actuals={savingsActuals}
+          suggestedActuals={suggestedSavings}
+          compact
+          singleRow
+          editing={isEditing}
+          onChangeLabel={(sourceId, value) =>
+            setDraftSavingsLabels((current) => ({
+              ...current,
+              [sourceId]: value,
+            }))
+          }
+          onChangeActual={(sourceId, value) =>
+            setSavingsActual(activeMonth, sourceId, value)
+          }
+          onRemoveColumn={handleRemoveSavingsColumn}
+        />
+
+        <div className="edit-actions">
+          <button
+            type="button"
+            className="add-item-btn"
+            onClick={handleAddSavingsItem}
+          >
+            Add Item
+          </button>
+        </div>
+
+        <div className="edit-actions footer-actions">
           <button
             type="button"
             className="edit-btn"
@@ -262,23 +368,6 @@ export default function MonthTabs() {
           >
             Save
           </button>
-        </div>
-
-        <div className="budget-summary">
-          <div
-            className={`summary-chip overspent ${overspent > 0 ? 'is-over' : overspent < 0 ? 'is-under' : ''}`}
-          >
-            <span className="summary-label">Overspent</span>
-            <span className="summary-value">{formatCurrency(overspent)}</span>
-            <span className="summary-hint">Actual expenses − estimate</span>
-          </div>
-          <div
-            className={`summary-chip savings ${savings < 0 ? 'is-over' : savings > 0 ? 'is-under' : ''}`}
-          >
-            <span className="summary-label">Savings</span>
-            <span className="summary-value">{formatCurrency(savings)}</span>
-            <span className="summary-hint">Income − expenses</span>
-          </div>
         </div>
       </div>
     </div>

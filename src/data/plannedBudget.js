@@ -22,3 +22,14 @@ export function buildExpenseItems(
 export function buildIncomeItems(customIds = [], labels = {}) {
   return customIds.map((id) => labeledItem(id, labels, 'New income'))
 }
+
+export const LEFTOVER_SAVINGS_ID = 'leftover'
+
+export function buildSavingsItems(customIds = [], labels = {}) {
+  return [
+    { ...labeledItem(LEFTOVER_SAVINGS_ID, labels, 'Leftover'), locked: true },
+    ...customIds
+      .filter((id) => id !== LEFTOVER_SAVINGS_ID)
+      .map((id) => labeledItem(id, labels, 'New saving')),
+  ]
+}

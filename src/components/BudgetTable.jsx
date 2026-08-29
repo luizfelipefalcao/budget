@@ -1,8 +1,10 @@
 import {
   compareTone,
+  displayActual,
   formatCurrency,
   hasAmount,
   parseAmount,
+  resolveActual,
   resolveEstimate,
 } from '../lib/money'
 
@@ -16,19 +18,21 @@ function ColumnTitleEdit({ item, onChangeLabel, onRemoveColumn }) {
         value={item.label}
         onChange={(event) => onChangeLabel(item.id, event.target.value)}
       />
-      <button
-        type="button"
-        className="column-delete"
-        aria-label={`Remove ${item.label}`}
-        onClick={() => onRemoveColumn(item.id)}
-      >
-        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M6.2 1.5h3.6l.5 1H14v1.2H2V2.5h3.7l.5-1zM3.1 5h9.8l-.7 8.4c-.1.7-.7 1.2-1.4 1.2H5.2c-.7 0-1.3-.5-1.4-1.2L3.1 5zm2.6 1.4.3 6h-1.1l-.3-6h1.1zm3.3 0v6H8.9v-6h1.1z"
-          />
-        </svg>
-      </button>
+      {item.locked || !onRemoveColumn ? null : (
+        <button
+          type="button"
+          className="column-delete"
+          aria-label={`Remove ${item.label}`}
+          onClick={() => onRemoveColumn(item.id)}
+        >
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M6.2 1.5h3.6l.5 1H14v1.2H2V2.5h3.7l.5-1zM3.1 5h9.8l-.7 8.4c-.1.7-.7 1.2-1.4 1.2H5.2c-.7 0-1.3-.5-1.4-1.2L3.1 5zm2.6 1.4.3 6h-1.1l-.3-6h1.1zm3.3 0v6H8.9v-6h1.1z"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
@@ -48,6 +52,7 @@ export default function BudgetTable({
   onChangeTitle,
   onChangeLabel,
   onRemoveColumn,
+  suggestedActuals = {},
 }) {
   const plannedValues = Object.fromEntries(
     items.map((item) => [
@@ -70,7 +75,8 @@ export default function BudgetTable({
 
   if (singleRow) {
     const incomeTotal = items.reduce(
-      (sum, item) => sum + resolveEstimate(actuals[item.id], item.planned),
+      (sum, item) =>
+        sum + resolveActual(actuals[item.id], suggestedActuals[item.id]),
       0,
     )
 
@@ -108,9 +114,12 @@ export default function BudgetTable({
                       type="number"
                       inputMode="decimal"
                       step="0.01"
-                      min="0"
                       aria-label={item.label}
-                      value={actuals[item.id] ?? ''}
+                      min={item.locked ? undefined : '0'}
+                      value={displayActual(
+                        actuals[item.id],
+                        suggestedActuals[item.id],
+                      )}
                       onChange={(event) =>
                         onChangeActual(item.id, event.target.value)
                       }

@@ -9,6 +9,7 @@ function monthEntry(actuals, month) {
   return {
     expenses: current.expenses ?? {},
     income: current.income ?? {},
+    savings: current.savings ?? {},
     expenseEstimates: current.expenseEstimates ?? {},
     incomeEstimates: current.incomeEstimates ?? {},
   }
@@ -22,8 +23,10 @@ export const useBudgetStore = create(
       expenseTableTitle: 'Monthly Budget',
       expenseLabels: {},
       incomeLabels: {},
+      savingsLabels: {},
       customCategoryIds: [],
       customIncomeIds: [],
+      customSavingsIds: [],
       removedCategoryIds: [],
       actuals: {},
 
@@ -80,13 +83,38 @@ export const useBudgetStore = create(
           }
         }),
 
-      saveExpenseEdits: (month, title, estimates, labels, incomeLabels = {}) =>
+      setSavingsActual: (month, sourceId, value) =>
+        set((state) => {
+          const current = monthEntry(state.actuals, month)
+          return {
+            actuals: {
+              ...state.actuals,
+              [month]: {
+                ...current,
+                savings: {
+                  ...current.savings,
+                  [sourceId]: value,
+                },
+              },
+            },
+          }
+        }),
+
+      saveExpenseEdits: (
+        month,
+        title,
+        estimates,
+        labels,
+        incomeLabels = {},
+        savingsLabels = {},
+      ) =>
         set((state) => {
           const current = monthEntry(state.actuals, month)
           return {
             expenseTableTitle: title.trim() || 'Monthly Budget',
             expenseLabels: { ...state.expenseLabels, ...labels },
             incomeLabels: { ...state.incomeLabels, ...incomeLabels },
+            savingsLabels: { ...state.savingsLabels, ...savingsLabels },
             actuals: {
               ...state.actuals,
               [month]: {
@@ -158,6 +186,25 @@ export const useBudgetStore = create(
       removeIncomeItem: (id) =>
         set((state) => ({
           customIncomeIds: (state.customIncomeIds ?? []).filter(
+            (itemId) => itemId !== id,
+          ),
+        })),
+
+      addSavingsItem: () => {
+        const id = `saving-${Date.now()}`
+        set((state) => ({
+          customSavingsIds: [...(state.customSavingsIds ?? []), id],
+          savingsLabels: {
+            ...state.savingsLabels,
+            [id]: 'New saving',
+          },
+        }))
+        return id
+      },
+
+      removeSavingsItem: (id) =>
+        set((state) => ({
+          customSavingsIds: (state.customSavingsIds ?? []).filter(
             (itemId) => itemId !== id,
           ),
         })),

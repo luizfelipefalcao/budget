@@ -24,6 +24,24 @@ export function resolveEstimate(stored, fallback) {
   return parseAmount(stored)
 }
 
+export function resolveActual(stored, suggested) {
+  if (hasAmount(stored)) return parseAmount(stored)
+  if (hasAmount(suggested)) return parseAmount(suggested)
+  return 0
+}
+
+export function displayActual(stored, suggested) {
+  if (stored !== undefined && stored !== null && stored !== '') return stored
+  if (suggested === undefined || suggested === null || suggested === '') {
+    return ''
+  }
+  return String(suggested)
+}
+
+export function leftoverBudget(incomeTotal, expenseTotal) {
+  return incomeTotal - expenseTotal
+}
+
 export function resolveLabel(item, labels = {}) {
   const custom = labels[item.id]
   if (custom == null || String(custom).trim() === '') return item.label
