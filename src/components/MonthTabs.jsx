@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import BudgetTable from './BudgetTable'
-import { expenseCategories, incomeSources } from '../data/plannedBudget'
+import { buildExpenseItems, incomeSources } from '../data/plannedBudget'
 import {
   formatCurrency,
   monthHeading,
@@ -13,34 +14,110 @@ export default function MonthTabs() {
   const months = useBudgetStore((state) => state.months)
   const activeMonth = useBudgetStore((state) => state.activeMonth)
   const actuals = useBudgetStore((state) => state.actuals)
+  const expenseTableTitle =
+    useBudgetStore((state) => state.expenseTableTitle) || 'Monthly Budget'
+  const savedLabels = useBudgetStore((state) => state.expenseLabels) ?? {}
+  const customCategoryIds =
+    useBudgetStore((state) => state.customCategoryIds) ?? []
+  const removedCategoryIds =
+    useBudgetStore((state) => state.removedCategoryIds) ?? []
   const setActiveMonth = useBudgetStore((state) => state.setActiveMonth)
   const setExpenseActual = useBudgetStore((state) => state.setExpenseActual)
   const setIncomeActual = useBudgetStore((state) => state.setIncomeActual)
-  const setExpenseEstimate = useBudgetStore((state) => state.setExpenseEstimate)
-  const setIncomeEstimate = useBudgetStore((state) => state.setIncomeEstimate)
+  const saveExpenseEdits = useBudgetStore((state) => state.saveExpenseEdits)
+  const addExpenseItem = useBudgetStore((state) => state.addExpenseItem)
+  const removeExpenseItem = useBudgetStore((state) => state.removeExpenseItem)
   const addMonth = useBudgetStore((state) => state.addMonth)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [draftTitle, setDraftTitle] = useState('')
+  const [draftEstimates, setDraftEstimates] = useState({})
+  const [draftLabels, setDraftLabels] = useState({})
 
   const monthActuals = actuals[activeMonth] ?? {}
   const expenseActuals = monthActuals.expenses ?? {}
   const incomeActuals = monthActuals.income ?? {}
-  const expenseEstimates = monthActuals.expenseEstimates ?? {}
-  const incomeEstimates = monthActuals.incomeEstimates ?? {}
+  const savedEstimates = monthActuals.expenseEstimates ?? {}
+  const expenseEstimates = isEditing ? draftEstimates : savedEstimates
+  const tableTitle = isEditing ? draftTitle : expenseTableTitle
+  const labelSource = isEditing ? draftLabels : savedLabels
+  const labeledCategories = buildExpenseItems(
+    customCategoryIds,
+    labelSource,
+    removedCategoryIds,
+  )
 
-  const estimatedExpenseTotal = expenseCategories.reduce(
+  const estimatedExpenseTotal = labeledCategories.reduce(
     (sum, item) =>
       sum + resolveEstimate(expenseEstimates[item.id], item.planned),
     0,
   )
-  const actualExpenseTotal = expenseCategories.reduce(
+  const actualExpenseTotal = labeledCategories.reduce(
     (sum, item) => sum + parseAmount(expenseActuals[item.id]),
     0,
   )
   const actualIncomeTotal = incomeSources.reduce(
-    (sum, item) => sum + parseAmount(incomeActuals[item.id]),
+    (sum, item) => sum + resolveEstimate(incomeActuals[item.id], item.planned),
     0,
   )
   const overspent = actualExpenseTotal - estimatedExpenseTotal
   const savings = actualIncomeTotal - actualExpenseTotal
+
+  function startEdit() {
+    setDraftTitle(expenseTableTitle)
+    setDraftEstimates({ ...savedEstimates })
+    setDraftLabels(
+      Object.fromEntries(
+        buildExpenseItems(
+          customCategoryIds,
+          savedLabels,
+          removedCategoryIds,
+        ).map((item) => [
+          item.id,
+          item.label,
+        ]),
+      ),
+    )
+    setIsEditing(true)
+  }
+
+  function saveEdits() {
+    saveExpenseEdits(activeMonth, draftTitle, draftEstimates, draftLabels)
+    setIsEditing(false)
+  }
+
+  function handleRemoveColumn(categoryId) {
+    removeExpenseItem(categoryId)
+    setDraftLabels((current) => {
+      const next = { ...current }
+      delete next[categoryId]
+      return next
+    })
+    setDraftEstimates((current) => {
+      const next = { ...current }
+      delete next[categoryId]
+      return next
+    })
+  }
+
+  function handleAddItem() {
+    const id = addExpenseItem()
+    if (isEditing) {
+      setDraftLabels((current) => ({
+        ...current,
+        [id]: 'New expense',
+      }))
+      setDraftEstimates((current) => ({
+        ...current,
+        [id]: '0',
+      }))
+    }
+  }
+
+  function selectMonth(month) {
+    setIsEditing(false)
+    setActiveMonth(month)
+  }
 
   return (
     <div className="month-tabs">
@@ -55,7 +132,7 @@ export default function MonthTabs() {
                 role="tab"
                 aria-selected={selected}
                 className={selected ? 'tab active' : 'tab'}
-                onClick={() => setActiveMonth(month)}
+                onClick={() => selectMonth(month)}
               >
                 {tabLabel(month)}
               </button>
@@ -71,30 +148,65 @@ export default function MonthTabs() {
         <h1 className="month-heading">{monthHeading(activeMonth)}</h1>
 
         <BudgetTable
-          title="Monthly Budget"
-          items={expenseCategories}
+          title={tableTitle}
+          items={labeledCategories}
           actuals={expenseActuals}
           estimates={expenseEstimates}
+          editing={isEditing}
+          canEditTitle
+          onChangeTitle={setDraftTitle}
+          onChangeLabel={(categoryId, value) =>
+            setDraftLabels((current) => ({
+              ...current,
+              [categoryId]: value,
+            }))
+          }
           onChangeActual={(categoryId, value) =>
             setExpenseActual(activeMonth, categoryId, value)
           }
           onChangeEstimate={(categoryId, value) =>
-            setExpenseEstimate(activeMonth, categoryId, value)
+            setDraftEstimates((current) => ({
+              ...current,
+              [categoryId]: value,
+            }))
           }
+          onRemoveColumn={handleRemoveColumn}
         />
+
+        <div className="edit-actions">
+          <button
+            type="button"
+            className="edit-btn"
+            onClick={startEdit}
+            disabled={isEditing}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="save-btn"
+            onClick={saveEdits}
+            disabled={!isEditing}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            className="add-item-btn"
+            onClick={handleAddItem}
+          >
+            Add Item
+          </button>
+        </div>
 
         <BudgetTable
           title="Income"
           items={incomeSources}
           actuals={incomeActuals}
-          estimates={incomeEstimates}
-          invertColors
           compact
+          singleRow
           onChangeActual={(sourceId, value) =>
             setIncomeActual(activeMonth, sourceId, value)
-          }
-          onChangeEstimate={(sourceId, value) =>
-            setIncomeEstimate(activeMonth, sourceId, value)
           }
         />
 

@@ -113,6 +113,68 @@
   font-weight: 600;
 }
 
+.title-input {
+  display: block;
+  width: min(320px, 100%);
+  margin: 0 0 10px;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #fff;
+}
+
+.title-input:focus {
+  outline: none;
+}
+
+.column-title-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.column-title-input {
+  width: 100%;
+  min-width: 5.5rem;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  background: #fff;
+}
+
+.column-delete {
+  appearance: none;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #8a8a8a;
+  cursor: pointer;
+}
+
+.column-delete:hover {
+  color: #9b1c1c;
+  background: #fde8e8;
+}
+
+.column-title-input:focus {
+  outline: none;
+}
+
 .table-scroll {
   overflow-x: auto;
 }
@@ -177,17 +239,18 @@
   text-align: right;
   background: #fff;
   appearance: textfield;
+  -moz-appearance: textfield;
 }
 
 .amount-input::-webkit-outer-spin-button,
 .amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
   appearance: none;
   margin: 0;
 }
 
 .amount-input:focus {
-  outline: 2px solid #c45c26;
-  outline-offset: 1px;
+  outline: none;
 }
 
 .budget-table td.is-over,
@@ -260,6 +323,39 @@
 .summary-hint {
   font-size: 0.75rem;
   color: #666;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: -12px 0 28px;
+}
+
+.edit-btn,
+.save-btn,
+.add-item-btn {
+  appearance: none;
+  border: 1px solid #c5c5c5;
+  background: #fff;
+  color: #333;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.edit-btn:hover:not(:disabled),
+.save-btn:hover:not(:disabled),
+.add-item-btn:hover:not(:disabled) {
+  background: #f3f3f3;
+}
+
+.edit-btn:disabled,
+.save-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .visually-hidden {

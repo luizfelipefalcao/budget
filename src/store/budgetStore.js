@@ -19,6 +19,10 @@ export const useBudgetStore = create(
     (set, get) => ({
       months: DEFAULT_MONTHS,
       activeMonth: '2026-08',
+      expenseTableTitle: 'Monthly Budget',
+      expenseLabels: {},
+      customCategoryIds: [],
+      removedCategoryIds: [],
       actuals: {},
 
       setActiveMonth: (month) => set({ activeMonth: month }),
@@ -74,6 +78,25 @@ export const useBudgetStore = create(
           }
         }),
 
+      saveExpenseEdits: (month, title, estimates, labels) =>
+        set((state) => {
+          const current = monthEntry(state.actuals, month)
+          return {
+            expenseTableTitle: title.trim() || 'Monthly Budget',
+            expenseLabels: { ...state.expenseLabels, ...labels },
+            actuals: {
+              ...state.actuals,
+              [month]: {
+                ...current,
+                expenseEstimates: {
+                  ...current.expenseEstimates,
+                  ...estimates,
+                },
+              },
+            },
+          }
+        }),
+
       setIncomeEstimate: (month, sourceId, value) =>
         set((state) => {
           const current = monthEntry(state.actuals, month)
@@ -88,6 +111,32 @@ export const useBudgetStore = create(
                 },
               },
             },
+          }
+        }),
+
+      addExpenseItem: () => {
+        const id = `custom-${Date.now()}`
+        set((state) => ({
+          customCategoryIds: [...(state.customCategoryIds ?? []), id],
+          expenseLabels: {
+            ...state.expenseLabels,
+            [id]: 'New expense',
+          },
+        }))
+        return id
+      },
+
+      removeExpenseItem: (id) =>
+        set((state) => {
+          const customIds = state.customCategoryIds ?? []
+          const isCustom = customIds.includes(id)
+          return {
+            customCategoryIds: isCustom
+              ? customIds.filter((itemId) => itemId !== id)
+              : customIds,
+            removedCategoryIds: isCustom
+              ? (state.removedCategoryIds ?? [])
+              : [...new Set([...(state.removedCategoryIds ?? []), id])],
           }
         }),
 

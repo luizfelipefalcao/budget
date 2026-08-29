@@ -16,6 +16,31 @@ export const expenseCategories = [
   { id: 'mounjaro', label: 'Mounjaro', planned: 322 },
 ]
 
+export function buildExpenseItems(
+  customIds = [],
+  labels = {},
+  removedIds = [],
+) {
+  const removed = new Set(removedIds)
+  const customItems = customIds
+    .filter((id) => !removed.has(id))
+    .map((id) => ({
+      id,
+      label: 'New expense',
+      planned: 0,
+    }))
+
+  return [...expenseCategories, ...customItems]
+    .filter((item) => !removed.has(item.id))
+    .map((item) => ({
+      ...item,
+      label:
+        labels[item.id] != null && String(labels[item.id]).trim() !== ''
+          ? labels[item.id]
+          : item.label,
+    }))
+}
+
 export const incomeSources = [
   { id: 'jess', label: 'Paycheck Jess', planned: 4666 },
   { id: 'felipe', label: 'Paycheck Felipe', planned: 6038 },

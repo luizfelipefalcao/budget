@@ -24,6 +24,12 @@ export function resolveEstimate(stored, fallback) {
   return parseAmount(stored)
 }
 
+export function resolveLabel(item, labels = {}) {
+  const custom = labels[item.id]
+  if (custom == null || String(custom).trim() === '') return item.label
+  return custom
+}
+
 export function tabLabel(yearMonth) {
   const [year, month] = yearMonth.split('-').map(Number)
   return new Date(year, month - 1, 1).toLocaleString('en-US', {
