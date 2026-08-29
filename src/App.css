@@ -180,10 +180,9 @@
 }
 
 .budget-table {
-  width: 100%;
+  width: max-content;
   border-collapse: collapse;
   font-size: 0.8125rem;
-  min-width: 1280px;
 }
 
 .budget-table.compact {
@@ -211,8 +210,10 @@
   background: #fafafa;
 }
 
-.budget-table .row-label-col {
-  min-width: 96px;
+.budget-table .row-label-col,
+.budget-table tbody th {
+  width: 1%;
+  white-space: nowrap;
 }
 
 .budget-table .total-col {
@@ -330,6 +331,10 @@
   justify-content: flex-start;
   gap: 8px;
   margin: -12px 0 28px;
+}
+
+.edit-actions.summary-actions {
+  margin: 0 0 16px;
 }
 
 .edit-btn,

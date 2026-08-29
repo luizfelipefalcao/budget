@@ -6,6 +6,33 @@ import {
   resolveEstimate,
 } from '../lib/money'
 
+function ColumnTitleEdit({ item, onChangeLabel, onRemoveColumn }) {
+  return (
+    <div className="column-title-edit">
+      <input
+        className="column-title-input"
+        type="text"
+        aria-label={`${item.label} column title`}
+        value={item.label}
+        onChange={(event) => onChangeLabel(item.id, event.target.value)}
+      />
+      <button
+        type="button"
+        className="column-delete"
+        aria-label={`Remove ${item.label}`}
+        onClick={() => onRemoveColumn(item.id)}
+      >
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M6.2 1.5h3.6l.5 1H14v1.2H2V2.5h3.7l.5-1zM3.1 5h9.8l-.7 8.4c-.1.7-.7 1.2-1.4 1.2H5.2c-.7 0-1.3-.5-1.4-1.2L3.1 5zm2.6 1.4.3 6h-1.1l-.3-6h1.1zm3.3 0v6H8.9v-6h1.1z"
+          />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 export default function BudgetTable({
   title,
   items,
@@ -56,7 +83,15 @@ export default function BudgetTable({
               <tr>
                 {items.map((item) => (
                   <th key={item.id} scope="col">
-                    {item.label}
+                    {editing ? (
+                      <ColumnTitleEdit
+                        item={item}
+                        onChangeLabel={onChangeLabel}
+                        onRemoveColumn={onRemoveColumn}
+                      />
+                    ) : (
+                      item.label
+                    )}
                   </th>
                 ))}
                 <th scope="col" className="total-col">
@@ -75,7 +110,7 @@ export default function BudgetTable({
                       step="0.01"
                       min="0"
                       aria-label={item.label}
-                      value={actuals[item.id] ?? item.planned}
+                      value={actuals[item.id] ?? ''}
                       onChange={(event) =>
                         onChangeActual(item.id, event.target.value)
                       }
@@ -114,35 +149,11 @@ export default function BudgetTable({
               {items.map((item) => (
                 <th key={item.id} scope="col">
                   {canEditTitle && editing ? (
-                    <div className="column-title-edit">
-                      <input
-                        className="column-title-input"
-                        type="text"
-                        aria-label={`${item.label} column title`}
-                        value={item.label}
-                        onChange={(event) =>
-                          onChangeLabel(item.id, event.target.value)
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="column-delete"
-                        aria-label={`Remove ${item.label}`}
-                        onClick={() => onRemoveColumn(item.id)}
-                      >
-                        <svg
-                          viewBox="0 0 16 16"
-                          width="12"
-                          height="12"
-                          aria-hidden="true"
-                        >
-                          <path
-                            fill="currentColor"
-                            d="M6.2 1.5h3.6l.5 1H14v1.2H2V2.5h3.7l.5-1zM3.1 5h9.8l-.7 8.4c-.1.7-.7 1.2-1.4 1.2H5.2c-.7 0-1.3-.5-1.4-1.2L3.1 5zm2.6 1.4.3 6h-1.1l-.3-6h1.1zm3.3 0v6H8.9v-6h1.1z"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                    <ColumnTitleEdit
+                      item={item}
+                      onChangeLabel={onChangeLabel}
+                      onRemoveColumn={onRemoveColumn}
+                    />
                   ) : (
                     item.label
                   )}
@@ -166,7 +177,7 @@ export default function BudgetTable({
                       step="0.01"
                       min="0"
                       aria-label={`${item.label} estimate`}
-                      value={estimates[item.id] ?? item.planned}
+                      value={estimates[item.id] ?? ''}
                       onChange={(event) =>
                         onChangeEstimate(item.id, event.target.value)
                       }

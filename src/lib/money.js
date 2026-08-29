@@ -45,6 +45,11 @@ export function monthHeading(yearMonth) {
   })
 }
 
+export function currentYearMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
 export function nextYearMonth(yearMonth) {
   const [year, month] = yearMonth.split('-').map(Number)
   const date = new Date(year, month, 1)
