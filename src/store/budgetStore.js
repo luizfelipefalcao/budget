@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { defaultIncomeAmounts } from '../data/plannedBudget'
 import { currentYearMonth, nextYearMonth } from '../lib/money'
 
+export const DATA_VERSION = 3
 const FIRST_MONTH = currentYearMonth()
 
 function monthEntry(actuals, month) {
@@ -15,20 +17,39 @@ function monthEntry(actuals, month) {
   }
 }
 
+export function createInitialBudgetState() {
+  return {
+    dataVersion: DATA_VERSION,
+    months: [FIRST_MONTH],
+    activeMonth: FIRST_MONTH,
+    expenseTableTitle: 'Monthly Budget',
+    expenseLabels: {},
+    incomeLabels: {
+      felipe: 'Felipe',
+      jessica: 'Jessica',
+    },
+    savingsLabels: {},
+    customCategoryIds: [],
+    customIncomeIds: [],
+    customSavingsIds: [],
+    removedCategoryIds: [],
+    removedIncomeIds: [],
+    actuals: {
+      [FIRST_MONTH]: {
+        expenses: {},
+        income: { ...defaultIncomeAmounts },
+        savings: {},
+        expenseEstimates: {},
+        incomeEstimates: {},
+      },
+    },
+  }
+}
+
 export const useBudgetStore = create(
   persist(
     (set, get) => ({
-      months: [FIRST_MONTH],
-      activeMonth: FIRST_MONTH,
-      expenseTableTitle: 'Monthly Budget',
-      expenseLabels: {},
-      incomeLabels: {},
-      savingsLabels: {},
-      customCategoryIds: [],
-      customIncomeIds: [],
-      customSavingsIds: [],
-      removedCategoryIds: [],
-      actuals: {},
+      ...createInitialBudgetState(),
 
       setActiveMonth: (month) => set({ activeMonth: month }),
 
@@ -100,21 +121,11 @@ export const useBudgetStore = create(
           }
         }),
 
-      saveExpenseEdits: (
-        month,
-        title,
-        estimates,
-        labels,
-        incomeLabels = {},
-        savingsLabels = {},
-      ) =>
+      saveExpenseSection: (month, estimates, labels) =>
         set((state) => {
           const current = monthEntry(state.actuals, month)
           return {
-            expenseTableTitle: title.trim() || 'Monthly Budget',
             expenseLabels: { ...state.expenseLabels, ...labels },
-            incomeLabels: { ...state.incomeLabels, ...incomeLabels },
-            savingsLabels: { ...state.savingsLabels, ...savingsLabels },
             actuals: {
               ...state.actuals,
               [month]: {
@@ -128,22 +139,15 @@ export const useBudgetStore = create(
           }
         }),
 
-      setIncomeEstimate: (month, sourceId, value) =>
-        set((state) => {
-          const current = monthEntry(state.actuals, month)
-          return {
-            actuals: {
-              ...state.actuals,
-              [month]: {
-                ...current,
-                incomeEstimates: {
-                  ...current.incomeEstimates,
-                  [sourceId]: value,
-                },
-              },
-            },
-          }
-        }),
+      saveIncomeSection: (labels) =>
+        set((state) => ({
+          incomeLabels: { ...state.incomeLabels, ...labels },
+        })),
+
+      saveSavingsSection: (labels) =>
+        set((state) => ({
+          savingsLabels: { ...state.savingsLabels, ...labels },
+        })),
 
       addExpenseItem: () => {
         const id = `custom-${Date.now()}`
@@ -184,11 +188,18 @@ export const useBudgetStore = create(
       },
 
       removeIncomeItem: (id) =>
-        set((state) => ({
-          customIncomeIds: (state.customIncomeIds ?? []).filter(
-            (itemId) => itemId !== id,
-          ),
-        })),
+        set((state) => {
+          const customIds = state.customIncomeIds ?? []
+          const isCustom = customIds.includes(id)
+          return {
+            customIncomeIds: isCustom
+              ? customIds.filter((itemId) => itemId !== id)
+              : customIds,
+            removedIncomeIds: isCustom
+              ? (state.removedIncomeIds ?? [])
+              : [...new Set([...(state.removedIncomeIds ?? []), id])],
+          }
+        }),
 
       addSavingsItem: () => {
         const id = `saving-${Date.now()}`
@@ -210,34 +221,33 @@ export const useBudgetStore = create(
         })),
 
       addMonth: () => {
-        const { months } = get()
+        const { months, actuals } = get()
         if (months.length === 0) {
           const first = currentYearMonth()
           set({ months: [first], activeMonth: first })
           return
         }
-        const next = nextYearMonth(months[months.length - 1])
+        const previous = months[months.length - 1]
+        const next = nextYearMonth(previous)
         if (months.includes(next)) return
-        set({ months: [...months, next], activeMonth: next })
+        const previousEntry = monthEntry(actuals, previous)
+        set({
+          months: [...months, next],
+          activeMonth: next,
+          actuals: {
+            ...actuals,
+            [next]: {
+              ...monthEntry(actuals, next),
+              income: { ...previousEntry.income },
+            },
+          },
+        })
       },
     }),
     {
       name: 'budget-storage',
-      version: 2,
-      migrate: () => {
-        const month = currentYearMonth()
-        return {
-          months: [month],
-          activeMonth: month,
-          expenseTableTitle: 'Monthly Budget',
-          expenseLabels: {},
-          incomeLabels: {},
-          customCategoryIds: [],
-          customIncomeIds: [],
-          removedCategoryIds: [],
-          actuals: {},
-        }
-      },
+      version: DATA_VERSION,
+      migrate: () => createInitialBudgetState(),
     },
   ),
 )

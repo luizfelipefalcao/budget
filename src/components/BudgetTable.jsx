@@ -48,8 +48,6 @@ export default function BudgetTable({
   compact = false,
   singleRow = false,
   editing = false,
-  canEditTitle = false,
-  onChangeTitle,
   onChangeLabel,
   onRemoveColumn,
   suggestedActuals = {},
@@ -137,17 +135,7 @@ export default function BudgetTable({
 
   return (
     <section className="budget-table-block">
-      {canEditTitle && editing ? (
-        <input
-          className="title-input"
-          type="text"
-          aria-label="Monthly budget title"
-          value={title}
-          onChange={(event) => onChangeTitle(event.target.value)}
-        />
-      ) : (
-        <h2>{title}</h2>
-      )}
+      <h2>{title}</h2>
       <div className="table-scroll">
         <table className={compact ? 'budget-table compact' : 'budget-table'}>
           <thead>
@@ -157,7 +145,7 @@ export default function BudgetTable({
               </th>
               {items.map((item) => (
                 <th key={item.id} scope="col">
-                  {canEditTitle && editing ? (
+                  {editing ? (
                     <ColumnTitleEdit
                       item={item}
                       onChangeLabel={onChangeLabel}
@@ -186,7 +174,7 @@ export default function BudgetTable({
                       step="0.01"
                       min="0"
                       aria-label={`${item.label} estimate`}
-                      value={estimates[item.id] ?? ''}
+                      value={estimates[item.id] ?? item.planned ?? 0}
                       onChange={(event) =>
                         onChangeEstimate(item.id, event.target.value)
                       }

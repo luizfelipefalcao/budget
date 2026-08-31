@@ -42,6 +42,30 @@ export function leftoverBudget(incomeTotal, expenseTotal) {
   return incomeTotal - expenseTotal
 }
 
+export function resolveCarriedIncome(actuals, months, month, sourceId) {
+  const index = months.indexOf(month)
+  const range = index === -1 ? months : months.slice(0, index + 1)
+  for (let cursor = range.length - 1; cursor >= 0; cursor -= 1) {
+    const value = actuals[range[cursor]]?.income?.[sourceId]
+    if (hasAmount(value)) return value
+  }
+  return ''
+}
+
+export function monthSavingsTotal(actuals, month, items) {
+  const savings = actuals[month]?.savings ?? {}
+  return items.reduce((sum, item) => sum + parseAmount(savings[item.id]), 0)
+}
+
+export function runningSavingsTotal(actuals, months, throughMonth, items) {
+  const index = months.indexOf(throughMonth)
+  const range = index === -1 ? months : months.slice(0, index + 1)
+  return range.reduce(
+    (sum, month) => sum + monthSavingsTotal(actuals, month, items),
+    0,
+  )
+}
+
 export function resolveLabel(item, labels = {}) {
   const custom = labels[item.id]
   if (custom == null || String(custom).trim() === '') return item.label

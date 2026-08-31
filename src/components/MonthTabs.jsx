@@ -4,25 +4,49 @@ import {
   buildExpenseItems,
   buildIncomeItems,
   buildSavingsItems,
-  LEFTOVER_SAVINGS_ID,
 } from '../data/plannedBudget'
+import { flushBudget } from '../lib/budgetSync'
 import {
   formatCurrency,
-  leftoverBudget,
   monthHeading,
   parseAmount,
-  resolveActual,
+  resolveCarriedIncome,
   resolveEstimate,
+  runningSavingsTotal,
   tabLabel,
 } from '../lib/money'
 import { useBudgetStore } from '../store/budgetStore'
+
+function SectionActions({ editing, onAdd, onEdit, onSave }) {
+  return (
+    <div className="edit-actions">
+      <button type="button" className="add-item-btn" onClick={onAdd}>
+        Add Item
+      </button>
+      <button
+        type="button"
+        className="edit-btn"
+        onClick={onEdit}
+        disabled={editing}
+      >
+        Edit
+      </button>
+      <button
+        type="button"
+        className="save-btn"
+        onClick={onSave}
+        disabled={!editing}
+      >
+        Save
+      </button>
+    </div>
+  )
+}
 
 export default function MonthTabs() {
   const months = useBudgetStore((state) => state.months)
   const activeMonth = useBudgetStore((state) => state.activeMonth)
   const actuals = useBudgetStore((state) => state.actuals)
-  const expenseTableTitle =
-    useBudgetStore((state) => state.expenseTableTitle) || 'Monthly Budget'
   const savedLabels = useBudgetStore((state) => state.expenseLabels) ?? {}
   const savedIncomeLabels = useBudgetStore((state) => state.incomeLabels) ?? {}
   const savedSavingsLabels = useBudgetStore((state) => state.savingsLabels) ?? {}
@@ -33,11 +57,14 @@ export default function MonthTabs() {
     useBudgetStore((state) => state.customSavingsIds) ?? []
   const removedCategoryIds =
     useBudgetStore((state) => state.removedCategoryIds) ?? []
+  const removedIncomeIds = useBudgetStore((state) => state.removedIncomeIds) ?? []
   const setActiveMonth = useBudgetStore((state) => state.setActiveMonth)
   const setExpenseActual = useBudgetStore((state) => state.setExpenseActual)
   const setIncomeActual = useBudgetStore((state) => state.setIncomeActual)
   const setSavingsActual = useBudgetStore((state) => state.setSavingsActual)
-  const saveExpenseEdits = useBudgetStore((state) => state.saveExpenseEdits)
+  const saveExpenseSection = useBudgetStore((state) => state.saveExpenseSection)
+  const saveIncomeSection = useBudgetStore((state) => state.saveIncomeSection)
+  const saveSavingsSection = useBudgetStore((state) => state.saveSavingsSection)
   const addExpenseItem = useBudgetStore((state) => state.addExpenseItem)
   const removeExpenseItem = useBudgetStore((state) => state.removeExpenseItem)
   const addIncomeItem = useBudgetStore((state) => state.addIncomeItem)
@@ -46,8 +73,7 @@ export default function MonthTabs() {
   const removeSavingsItem = useBudgetStore((state) => state.removeSavingsItem)
   const addMonth = useBudgetStore((state) => state.addMonth)
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [draftTitle, setDraftTitle] = useState('')
+  const [editingSection, setEditingSection] = useState(null)
   const [draftEstimates, setDraftEstimates] = useState({})
   const [draftLabels, setDraftLabels] = useState({})
   const [draftIncomeLabels, setDraftIncomeLabels] = useState({})
@@ -55,21 +81,31 @@ export default function MonthTabs() {
 
   const monthActuals = actuals[activeMonth] ?? {}
   const expenseActuals = monthActuals.expenses ?? {}
-  const incomeActuals = monthActuals.income ?? {}
-  const savingsActuals = monthActuals.savings ?? {}
   const savedEstimates = monthActuals.expenseEstimates ?? {}
-  const expenseEstimates = isEditing ? draftEstimates : savedEstimates
-  const tableTitle = isEditing ? draftTitle : expenseTableTitle
-  const labelSource = isEditing ? draftLabels : savedLabels
-  const incomeLabelSource = isEditing ? draftIncomeLabels : savedIncomeLabels
-  const savingsLabelSource = isEditing ? draftSavingsLabels : savedSavingsLabels
+  const expenseEstimates =
+    editingSection === 'expense' ? draftEstimates : savedEstimates
+  const labelSource = editingSection === 'expense' ? draftLabels : savedLabels
+  const incomeLabelSource =
+    editingSection === 'income' ? draftIncomeLabels : savedIncomeLabels
+  const savingsLabelSource =
+    editingSection === 'savings' ? draftSavingsLabels : savedSavingsLabels
   const labeledCategories = buildExpenseItems(
     customCategoryIds,
     labelSource,
     removedCategoryIds,
   )
-  const incomeItems = buildIncomeItems(customIncomeIds, incomeLabelSource)
+  const incomeItems = buildIncomeItems(
+    customIncomeIds,
+    incomeLabelSource,
+    removedIncomeIds,
+  )
   const savingsItems = buildSavingsItems(customSavingsIds, savingsLabelSource)
+  const incomeDisplay = Object.fromEntries(
+    incomeItems.map((item) => [
+      item.id,
+      resolveCarriedIncome(actuals, months, activeMonth, item.id),
+    ]),
+  )
 
   const estimatedExpenseTotal = labeledCategories.reduce(
     (sum, item) =>
@@ -80,21 +116,23 @@ export default function MonthTabs() {
     (sum, item) => sum + parseAmount(expenseActuals[item.id]),
     0,
   )
-  const actualIncomeTotal = incomeItems.reduce(
-    (sum, item) => sum + parseAmount(incomeActuals[item.id]),
-    0,
-  )
-  const leftover = leftoverBudget(actualIncomeTotal, actualExpenseTotal)
-  const suggestedSavings = { [LEFTOVER_SAVINGS_ID]: leftover }
   const overspent = actualExpenseTotal - estimatedExpenseTotal
-  const savings = savingsItems.reduce(
-    (sum, item) =>
-      sum + resolveActual(savingsActuals[item.id], suggestedSavings[item.id]),
-    0,
+  const savings = runningSavingsTotal(
+    actuals,
+    months,
+    activeMonth,
+    savingsItems,
   )
 
-  function startEdit() {
-    setDraftTitle(expenseTableTitle)
+  async function persistNow() {
+    try {
+      await flushBudget()
+    } catch {
+      // Status is handled by the live sync subscription.
+    }
+  }
+
+  function startExpenseEdit() {
     setDraftEstimates({ ...savedEstimates })
     setDraftLabels(
       Object.fromEntries(
@@ -105,14 +143,23 @@ export default function MonthTabs() {
         ).map((item) => [item.id, item.label]),
       ),
     )
+    setEditingSection('expense')
+  }
+
+  function startIncomeEdit() {
     setDraftIncomeLabels(
       Object.fromEntries(
-        buildIncomeItems(customIncomeIds, savedIncomeLabels).map((item) => [
-          item.id,
-          item.label,
-        ]),
+        buildIncomeItems(
+          customIncomeIds,
+          savedIncomeLabels,
+          removedIncomeIds,
+        ).map((item) => [item.id, item.label]),
       ),
     )
+    setEditingSection('income')
+  }
+
+  function startSavingsEdit() {
     setDraftSavingsLabels(
       Object.fromEntries(
         buildSavingsItems(customSavingsIds, savedSavingsLabels).map((item) => [
@@ -121,19 +168,25 @@ export default function MonthTabs() {
         ]),
       ),
     )
-    setIsEditing(true)
+    setEditingSection('savings')
   }
 
-  function saveEdits() {
-    saveExpenseEdits(
-      activeMonth,
-      draftTitle,
-      draftEstimates,
-      draftLabels,
-      draftIncomeLabels,
-      draftSavingsLabels,
-    )
-    setIsEditing(false)
+  async function saveExpenseEdits() {
+    saveExpenseSection(activeMonth, draftEstimates, draftLabels)
+    setEditingSection(null)
+    await persistNow()
+  }
+
+  async function saveIncomeEdits() {
+    saveIncomeSection(draftIncomeLabels)
+    setEditingSection(null)
+    await persistNow()
+  }
+
+  async function saveSavingsEdits() {
+    saveSavingsSection(draftSavingsLabels)
+    setEditingSection(null)
+    await persistNow()
   }
 
   function handleRemoveColumn(categoryId) {
@@ -160,7 +213,6 @@ export default function MonthTabs() {
   }
 
   function handleRemoveSavingsColumn(sourceId) {
-    if (sourceId === LEFTOVER_SAVINGS_ID) return
     removeSavingsItem(sourceId)
     setDraftSavingsLabels((current) => {
       const next = { ...current }
@@ -169,42 +221,42 @@ export default function MonthTabs() {
     })
   }
 
-  function handleAddItem() {
+  async function handleAddExpenseItem() {
     const id = addExpenseItem()
-    if (isEditing) {
-      setDraftLabels((current) => ({
-        ...current,
-        [id]: 'New expense',
-      }))
-      setDraftEstimates((current) => ({
-        ...current,
-        [id]: '',
-      }))
-    }
+    if (editingSection !== 'expense') startExpenseEdit()
+    setDraftLabels((current) => ({
+      ...current,
+      [id]: 'New expense',
+    }))
+    setDraftEstimates((current) => ({
+      ...current,
+      [id]: '0',
+    }))
+    await persistNow()
   }
 
-  function handleAddIncomeItem() {
+  async function handleAddIncomeItem() {
     const id = addIncomeItem()
-    if (isEditing) {
-      setDraftIncomeLabels((current) => ({
-        ...current,
-        [id]: 'New income',
-      }))
-    }
+    if (editingSection !== 'income') startIncomeEdit()
+    setDraftIncomeLabels((current) => ({
+      ...current,
+      [id]: 'New income',
+    }))
+    await persistNow()
   }
 
-  function handleAddSavingsItem() {
+  async function handleAddSavingsItem() {
     const id = addSavingsItem()
-    if (isEditing) {
-      setDraftSavingsLabels((current) => ({
-        ...current,
-        [id]: 'New saving',
-      }))
-    }
+    if (editingSection !== 'savings') startSavingsEdit()
+    setDraftSavingsLabels((current) => ({
+      ...current,
+      [id]: 'New saving',
+    }))
+    await persistNow()
   }
 
   function selectMonth(month) {
-    setIsEditing(false)
+    setEditingSection(null)
     setActiveMonth(month)
   }
 
@@ -254,20 +306,20 @@ export default function MonthTabs() {
               >
                 <span className="summary-label">Savings</span>
                 <span className="summary-value">{formatCurrency(savings)}</span>
-                <span className="summary-hint">Saving table total</span>
+                <span className="summary-hint">
+                  Running total through this month
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         <BudgetTable
-          title={tableTitle}
+          title="Monthly Budget"
           items={labeledCategories}
           actuals={expenseActuals}
           estimates={expenseEstimates}
-          editing={isEditing}
-          canEditTitle
-          onChangeTitle={setDraftTitle}
+          editing={editingSection === 'expense'}
           onChangeLabel={(categoryId, value) =>
             setDraftLabels((current) => ({
               ...current,
@@ -286,19 +338,20 @@ export default function MonthTabs() {
           onRemoveColumn={handleRemoveColumn}
         />
 
-        <div className="edit-actions">
-          <button type="button" className="add-item-btn" onClick={handleAddItem}>
-            Add Item
-          </button>
-        </div>
+        <SectionActions
+          editing={editingSection === 'expense'}
+          onAdd={handleAddExpenseItem}
+          onEdit={startExpenseEdit}
+          onSave={saveExpenseEdits}
+        />
 
         <BudgetTable
           title="Income"
           items={incomeItems}
-          actuals={incomeActuals}
+          actuals={incomeDisplay}
           compact
           singleRow
-          editing={isEditing}
+          editing={editingSection === 'income'}
           onChangeLabel={(sourceId, value) =>
             setDraftIncomeLabels((current) => ({
               ...current,
@@ -311,24 +364,20 @@ export default function MonthTabs() {
           onRemoveColumn={handleRemoveIncomeColumn}
         />
 
-        <div className="edit-actions">
-          <button
-            type="button"
-            className="add-item-btn"
-            onClick={handleAddIncomeItem}
-          >
-            Add Item
-          </button>
-        </div>
+        <SectionActions
+          editing={editingSection === 'income'}
+          onAdd={handleAddIncomeItem}
+          onEdit={startIncomeEdit}
+          onSave={saveIncomeEdits}
+        />
 
         <BudgetTable
           title="Saving"
           items={savingsItems}
-          actuals={savingsActuals}
-          suggestedActuals={suggestedSavings}
+          actuals={monthActuals.savings ?? {}}
           compact
           singleRow
-          editing={isEditing}
+          editing={editingSection === 'savings'}
           onChangeLabel={(sourceId, value) =>
             setDraftSavingsLabels((current) => ({
               ...current,
@@ -341,34 +390,12 @@ export default function MonthTabs() {
           onRemoveColumn={handleRemoveSavingsColumn}
         />
 
-        <div className="edit-actions">
-          <button
-            type="button"
-            className="add-item-btn"
-            onClick={handleAddSavingsItem}
-          >
-            Add Item
-          </button>
-        </div>
-
-        <div className="edit-actions footer-actions">
-          <button
-            type="button"
-            className="edit-btn"
-            onClick={startEdit}
-            disabled={isEditing}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="save-btn"
-            onClick={saveEdits}
-            disabled={!isEditing}
-          >
-            Save
-          </button>
-        </div>
+        <SectionActions
+          editing={editingSection === 'savings'}
+          onAdd={handleAddSavingsItem}
+          onEdit={startSavingsEdit}
+          onSave={saveSavingsEdits}
+        />
       </div>
     </div>
   )

@@ -26,6 +26,10 @@
   font-size: 0.95rem;
 }
 
+.sync-status {
+  color: #888;
+}
+
 .month-tabs {
   display: flex;
   flex-direction: column;

@@ -29,6 +29,7 @@ jobs:
       - name: Build
         env:
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
         run: |
           if [ -z "$APP_PASSWORD" ]; then
             echo "Add an APP_PASSWORD repository secret before deploying."
